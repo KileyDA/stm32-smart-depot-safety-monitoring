@@ -59,6 +59,12 @@ The project was updated in STM32CubeMX using the same STM32CubeIDE project as th
 
 The PIR sensor module drives its output pin HIGH or LOW, so no internal pull-up or pull-down resistor was enabled for the first test.
 
+### CubeMX Configuration Screenshot
+
+The screenshot below shows PA1 configured as a GPIO input with the user label `PIR_MOTION_INPUT`.
+
+![PIR PA1 GPIO Input Configuration](../../images/cubemx-configuration/pir-pa1-gpio-input-configuration.png)
+
 ## Firmware Test
 
 The STM32 reads the PIR sensor output from PA1 and sends the result over USART2 to PuTTY through the ST-LINK Virtual COM Port.
