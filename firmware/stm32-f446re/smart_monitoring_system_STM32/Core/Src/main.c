@@ -49,7 +49,9 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint32_t ldr_adc_value =0;
 uint32_t ldr_voltage_mv = 0;
+GPIO_PinState pir_state;
 char uart_message[100];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,7 +100,7 @@ int main(void)
   MX_ADC1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  char start_msg[] = "STM32 LDR ADC test started\r\n";
+  char start_msg[] = "STM32 LDR and PIR sensor test started\r\n";
   HAL_UART_Transmit(&huart2, (uint8_t*)start_msg, strlen(start_msg), HAL_MAX_DELAY);
   /* USER CODE END 2 */
 
@@ -127,6 +129,22 @@ int main(void)
 	  }
 	  HAL_ADC_Stop(&hadc1);
 
+	  // Read PIR motion Sensor
+	  pir_state = HAL_GPIO_ReadPin(PIR_MOTION_INPUT_GPIO_Port, PIR_MOTION_INPUT_Pin);
+
+	    if (pir_state == GPIO_PIN_SET)
+	    {
+	  	  snprintf(uart_message, sizeof(uart_message), "PIR Motion: DETECTED\r\n");
+	    }
+	    else
+	    {
+	  	  snprintf(uart_message, sizeof(uart_message), "PIR Motion: NOT DETECTED\r\n");
+	    }
+
+	    HAL_UART_Transmit(&huart2,
+	  		  (uint8_t*)uart_message,
+	  		  strlen(uart_message),
+	  		  HAL_MAX_DELAY);
 	  HAL_Delay(500);
   }
   /* USER CODE END 3 */
@@ -290,6 +308,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PIR_MOTION_INPUT_Pin */
+  GPIO_InitStruct.Pin = PIR_MOTION_INPUT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(PIR_MOTION_INPUT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
