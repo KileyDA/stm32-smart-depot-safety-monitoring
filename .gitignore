@@ -1,0 +1,15 @@
+# STM32CubeIDE build folders
+Debug/
+Release/
+
+# Build outputs
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+
+# Logs and temporary files
+*.log
+*.tmp
