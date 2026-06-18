@@ -10,7 +10,7 @@ This is the first sensing stage of the Smart Depot Safety and Access Monitoring 
 
 The STM32 cannot directly measure resistance, so the LDR is connected with a fixed 10kΩ resistor to form a voltage divider. The voltage at the middle point of the divider changes as the light level changes.
 
-![LDR Voltage Divider Circuit](https://github.com/KileyDA/stm32-smart-depot-safety-monitoring/blob/hardware/circuit-diagrams/images/circuit-diagrams/01-ldr-voltage-divider.png)
+![LDR Voltage Divider Circuit](../../images/circuit-diagrams/01-ldr-voltage-divider.png)
 
 
 ## Components Used
@@ -59,6 +59,16 @@ The project was configured in STM32CubeMX using the **NUCLEO-F446RE** board.
 | Baud Rate       | 115200        |
 | Toolchain / IDE | STM32CubeIDE  |
 
+### CubeMX Configuration Screenshots
+
+The screenshots below show the CubeMX setup used for the LDR ADC test.
+
+![ADC1 PA0 Configuration](../../images/cubemx-configuration/adc1-pa0-configuration.png)
+
+![USART2 Configuration](../../images/cubemx-configuration/usart2-configuration.png)
+
+![Project Manager Settings](../../images/cubemx-configuration/project-manager-settings.png)
+
 ## Firmware Test
 
 The STM32 reads the ADC value from PA0 and sends the result over USART2 to PuTTY through the ST-LINK Virtual COM Port.
@@ -69,6 +79,11 @@ Example serial output:
 LDR ADC Value: 3922 | Voltage: 3160 mV
 LDR ADC Value: 2926 | Voltage: 2357 mV
 ```
+### Physical Circuit Setup
+
+The LDR voltage divider was built on a breadboard and connected to the STM32 Nucleo F446RE. The middle point between the LDR and 10kΩ resistor was connected to PA0 / ADC1_IN0.
+
+![LDR Physical Circuit Setup](../../images/hardware-setup/ldr-physical-circuit.png)
 
 ## Serial Monitor Settings
 
