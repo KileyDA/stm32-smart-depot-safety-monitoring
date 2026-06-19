@@ -89,15 +89,38 @@ The LDR voltage divider was built on a breadboard and connected to the STM32 Nuc
 
 PuTTY was configured using the following settings:
 
-| Setting         | Value  |
-| --------------- | ------ |
+| Setting | Value |
+|---|---|
 | Connection type | Serial |
-| Serial line     | COM11  |
-| Baud rate       | 115200 |
-| Data bits       | 8      |
-| Stop bits       | 1      |
-| Parity          | None   |
-| Flow control    | None   |
+| Serial line | COM11 |
+| Baud rate | 115200 |
+| Data bits | 8 |
+| Stop bits | 1 |
+| Parity | None |
+| Flow control | None |
+
+USART2 was used to send the LDR readings from the STM32 to the computer. On the Nucleo-F446RE board, USART2 is connected to the onboard ST-LINK interface, which appears on the computer as a Virtual COM Port.
+
+This allows the STM32 to transmit serial messages through the USB cable connected to the laptop. PuTTY was then used to open the COM port and display the messages sent by the firmware.
+
+The data path is:
+
+```text
+Sensor reading / message stored in RAM
+   ↓
+HAL_UART_Transmit() writes the message to USART2
+   ↓
+USART2 hardware sends the data serially through TX
+   ↓
+Onboard ST-LINK interface receives/bridges the USART2 signal
+   ↓
+USB connection carries the data to the laptop
+   ↓
+Laptop detects it as a Virtual COM Port, e.g. COM11
+   ↓
+PuTTY opens COM11 and displays the message
+```
+
 
 ## Test Result
 
