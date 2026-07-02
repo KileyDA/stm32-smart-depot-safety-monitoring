@@ -10,7 +10,8 @@ This is the first sensing stage of the Smart Depot Safety and Access Monitoring 
 
 The STM32 cannot directly measure resistance, so the LDR is connected with a fixed 10kΩ resistor to form a voltage divider. The voltage at the middle point of the divider changes as the light level changes.
 
-![LDR Voltage Divider Circuit](../../images/circuit-diagrams/01-ldr-voltage-divider.png)
+### LDR Voltage Divider Schematic
+![LDR Voltage Divider Circuit](../../images/circuit-diagrams/01-ldr-voltage-divider-schematic.png)
 
 
 ## Components Used
