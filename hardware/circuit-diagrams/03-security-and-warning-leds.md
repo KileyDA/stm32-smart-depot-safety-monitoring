@@ -82,6 +82,8 @@ Connection:
 D7 / PA8 → 220Ω resistor → Red LED anode
 Red LED cathode → GND
 ```
+### Security and Warning LED Schematic
+![Security and Warning LED Output Circuit](../../images/circuit-diagrams/03-security-and-warning-led-schematic.png)
 
 ## Why Each LED Uses Its Own Resistor
 
