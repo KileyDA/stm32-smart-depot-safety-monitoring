@@ -34,6 +34,9 @@ This means the STM32 reads the PIR output using a GPIO input pin.
 | OUT            | PA1 / GPIO input | Sends motion detection signal to STM32 |
 | GND            | GND              | Common ground reference                |
 
+### PIR Motion Sencsor Schematic
+![PIR Motion Sensor Input Circuit](../../images/circuit-diagrams/02-pir-motion-sensor-schematic.png)
+
 ## Why GPIO Input Is Used
 
 The PIR sensor provides a digital output signal, meaning the signal is either HIGH or LOW. Because of this, the STM32 does not need to measure a range of voltages using the ADC.
