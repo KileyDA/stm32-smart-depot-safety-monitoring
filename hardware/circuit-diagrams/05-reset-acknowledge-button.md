@@ -35,6 +35,9 @@ The STM32 then uses this input to decide what should happen next. In the final s
 | Jumper wires        | Electrical connections                           |
 | Breadboard          | Circuit prototyping                              |
 
+### Reset/Acknowledge Button Circuit Schematic
+![Reset/Acknowledge Button Circuit ](../../images/circuit-diagrams/05-reset-acknowledge-button-schematic.png)
+
 ## Why an Internal Pull-up Is Used
 
 The STM32 internal pull-up resistor is enabled so that the input pin has a clear default state when the button is not pressed.
