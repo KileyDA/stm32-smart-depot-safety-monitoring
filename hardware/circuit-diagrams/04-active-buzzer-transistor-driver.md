@@ -33,6 +33,8 @@ This protects the STM32 GPIO pin and allows the microcontroller to safely contro
 | Breadboard            | Circuit prototyping                                                 |
 | Jumper wires          | Electrical connections                                              |
 
+### Active Buzzer Transistor Driver Circuit Schematic
+![Active Buzzer Transistor Driver Circuit](../../images/circuit-diagrams/04-active-buzzer-transistor-driver-schematic.png)
 ## Active Buzzer Specification
 
 | Parameter         | Value                         |
