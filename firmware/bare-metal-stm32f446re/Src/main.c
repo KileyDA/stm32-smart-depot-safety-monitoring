@@ -53,6 +53,8 @@
 #define ADC1_OFFSET				  		(0x00002000UL)
 #define ADC1_BASE				  		(APB2_BASE + ADC1_OFFSET)
 
+#define DMA2_OFFSET						(0x00006400UL)
+#define DMA2_BASE						(AHB1_BASE + DMA2_OFFSET)
 /* =========================
    Register Access Helper
    ========================= */
@@ -137,13 +139,31 @@
 #define ADC1_DR       		   			 REG32(ADC1_BASE + ADC1_DR_OFFSET)
 
 /* =========================
+   DMA Register Offsets
+   ========================= */
+#define DMA_LIFCR_OFFSET				  (0x008UL)
+#define DMA_S0CR_OFFSET 				  (0x010UL)
+#define DMA_S0NDTR_OFFSET                 (0x014UL)
+#define DMA_S0PAR_OFFSET				  (0x018UL)
+#define DMA_S0M0AR_OFFSET				  (0x01CUL)
+
+/* =========================
+   DMA2 Register Definitions
+   ========================= */
+#define DMA2_LIFCR						  REG32(DMA2_BASE + DMA_LIFCR_OFFSET)
+#define DMA2_S0CR						  REG32(DMA2_BASE + DMA_S0CR_OFFSET)
+#define DMA2_S0NDTR						  REG32(DMA2_BASE + DMA_S0NDTR_OFFSET)
+#define DMA2_S0PAR						  REG32(DMA2_BASE + DMA_S0PAR_OFFSET)
+#define DMA2_S0M0AR						  REG32(DMA2_BASE + DMA_S0M0AR_OFFSET)
+
+/* =========================
    RCC Peripheral Enable Bits
    ========================= */
 #define GPIOAEN				   			 (1U << 0)
 #define GPIOBEN				   			 (1U << 1)
 #define TIM3EN				   			 (1U << 1)
 #define ADC1EN				   			 (1U << 8)
-
+#define DMA2EN						     (1U << 22)
 /* =========================
    TIM3 Control Bits
    ========================= */
@@ -200,67 +220,42 @@
 /* =========================
    ADC Control and Status Bits
    ========================= */
-#define ADC_CR2_ADON            (1U << 0)
-#define ADC_CR2_SWSTART         (1U << 30)
-#define ADC_SR_EOC              (1U << 1)
+#define ADC_CR2_ADON                     (1U << 0)
+#define ADC_CR2_SWSTART         		 (1U << 30)
+#define ADC_CR2_DMA 					 (1U << 8)
+#define ADC_CR2_DDS 					 (1U << 9)
+#define ADC_CR2_CONT 					 (1U << 1)
+#define ADC_SR_EOC              		 (1U << 1)
+
+
+/* =========================
+   DMA Stream Control Bits
+   ========================= */
+#define DMA_SCR_EN						 (1U << 0)
+#define DMA_SCR_CHSEL_MASK               (0x7U << 25)
+#define DMA_SCR_DIR_MASK				 (0x3U << 6)
+#define DMA_SCR_PSIZE_MASK   			 (0x3U << 11)
+#define DMA_SCR_MSIZE_MASK   			 (0x3U << 13)
+#define DMA_SCR_CIRC         			 (1U << 8)
+
+#define DMA_SCR_PSIZE_HALFWORD      	 (1U << 11)
+#define DMA_SCR_MSIZE_HALFWORD      	 (1U << 13)
+
+/* =========================
+   DMA Stream 0 Flag Clear Bits
+   ========================= */
+#define DMA_LIFCR_CLEAR_STREAM0			 ((1U<<0)|(1U<<2)|(1U<<3)|(1U<<4)|(1U<<5))
 
 /* =========================
    Output Pins
    ========================= */
-#define WARNING_LED			  (1U << 8) // PA8
-#define SECURITY_LIGHT		  (1U << 4) // PB4
-#define LIGHT_DETECTOR		  (1U << 0) // PA0
+#define WARNING_LED			  			 (1U << 8) // PA8
+#define SECURITY_LIGHT		  			 (1U << 4) // PB4
+#define LIGHT_DETECTOR		  			 (1U << 0) // PA0
 
 #define NIGHT_THRESHOLD 1200
 
-void security_light_pwm_init(void)
-{
-    /* 1. Enable GPIOB clock */
-    RCC_AHB1ENR |= GPIOBEN;
-
-    /* 2. Configure PB4 as alternate function mode */
-    GPIOB_MODER &= ~PB4_MODE_BIT0;
-    GPIOB_MODER |=  PB4_MODE_BIT1;
-
-    /* 3. Select AF2 for PB4: PB4 -> TIM3_CH1 */
-    GPIOB_AFRL &= ~(GPIO_AFR_MASK << PB4_AFRL_SHIFT);  // Clear PB4 AF bits
-    GPIOB_AFRL |=  (GPIO_AF2_TIM3 << PB4_AFRL_SHIFT);  // Set AF2
-
-    /* 4. Enable TIM3 clock */
-    RCC_APB1ENR |= TIM3EN;
-
-    /* 5. Set TIM3 prescaler */
-    TIM3_PSC = 160 - 1;
-
-    /* 6. Set PWM period */
-    TIM3_ARR = 100 - 1;
-
-    /* 7. Set duty cycle */
-    TIM3_CCR1 = 0;  // 50% duty cycle
-
-    /* 8. Configure Channel 1 as PWM mode 1 */
-    TIM3_CCMR1 &= ~TIM_CCMR1_CC1S_MASK;  // CC1S = 00, output mode
-    TIM3_CCMR1 &= ~TIM_CCMR1_OC1M_MASK;  // Clear OC1M bits
-    TIM3_CCMR1 |=  TIM_CCMR1_OC1M_PWM1;  // Set OC1M = 110, PWM mode 1
-
-    /* 9. Enable preload for Channel 1 */
-    TIM3_CCMR1 |= TIM_CCMR1_OC1PE;
-
-    /* 10. Enable TIM3 Channel 1 output */
-    TIM3_CCER |= TIM_CCER_CC1E;
-
-    /* 11. Enable auto-reload preload */
-    TIM3_CR1 |= TIM_CR1_ARPE;
-
-    /* 12. Generate update event */
-    TIM3_EGR |= TIM_EGR_UG;
-
-    /* 13. Reset counter */
-    TIM3_CNT = 0;
-
-    /* 14. Start TIM3 */
-    TIM3_CR1 |= TIM_CR1_CEN;
-}
+volatile uint16_t adc_dma_value = 0;
 
 void adc1_pa0_init(void){
 	/*Enable clock for PA0*/
@@ -290,15 +285,110 @@ void adc1_pa0_init(void){
 
 }
 
-uint32_t adc1_read(void){
+void adc1_start_conversion(void){
 	/*1. Start ADC Conversion */
 	ADC1_CR2 |=  ADC_CR2_SWSTART;
+}
 
-	/* 2. Wait for conversion to complete */
-	while(!(ADC1_SR & ADC_SR_EOC )){}
+void adc1_dma_init(void){
+	/* 1. Enable DMA2 clock*/
+	RCC_AHB1ENR |= DMA2EN;
 
-	/* 3. Read and return ADC result */
-	return ADC1_DR;
+	/* 2. Disable DMA2 Stream 0 before configuring it.*/
+	DMA2_S0CR &= ~DMA_SCR_EN;
+
+	/* 3. Wait until DMA stream is fully disabled */
+	while (DMA2_S0CR & DMA_SCR_EN) {}
+
+	/* 4. Clear any pending flags for DMA2 Stream0 */
+	DMA2_LIFCR |= DMA_LIFCR_CLEAR_STREAM0;
+
+	/* 5. Set peripheral address: adc1 data register */
+	DMA2_S0PAR = (uint32_t)&ADC1_DR;
+
+	/* 6. Set memory address: variable where ADC result will be stored */
+	DMA2_S0M0AR	= (uint32_t)&adc_dma_value;
+
+	/* 7. Set the number of data items to transfer */
+	DMA2_S0NDTR = 1;
+
+	/* 8. Select DMA channel 0 for ADC1 */
+	DMA2_S0CR &= ~DMA_SCR_CHSEL_MASK;
+
+	/* 9. Set direction: peripheral-to-memory */
+	DMA2_S0CR &= ~DMA_SCR_DIR_MASK;
+
+	/* 10. Set peripheral data size to half-word, because ADC result is 12-bit */
+	DMA2_S0CR &= ~DMA_SCR_PSIZE_MASK;
+	DMA2_S0CR |= DMA_SCR_PSIZE_HALFWORD;
+
+	/* 11. Set memory data size to half-word */
+	DMA2_S0CR &= ~DMA_SCR_MSIZE_MASK;
+	DMA2_S0CR |= DMA_SCR_MSIZE_HALFWORD;
+
+	/* 12. Enable circular mode so that the value keeps updating*/
+	DMA2_S0CR |= DMA_SCR_CIRC;
+
+	/* 13. Enable DMA mode in ADC1*/
+	ADC1_CR2 |= ADC_CR2_DMA;
+
+	/* 14. Keep DMA requests active after each conversion*/
+	ADC1_CR2 |= ADC_CR2_DDS;
+
+	/* 15. Enable continous conversion mode*/
+	ADC1_CR2 |= ADC_CR2_CONT;
+
+	/* 16. Enable DMA2 Stream 0*/
+	DMA2_S0CR |= DMA_SCR_EN;
+}
+
+void security_light_pwm_init(void)
+{
+    /* 1. Enable GPIOB clock */
+    RCC_AHB1ENR |= GPIOBEN;
+
+    /* 2. Configure PB4 as alternate function mode */
+    GPIOB_MODER &= ~PB4_MODE_BIT0;
+    GPIOB_MODER |=  PB4_MODE_BIT1;
+
+    /* 3. Select AF2 for PB4: PB4 -> TIM3_CH1 */
+    GPIOB_AFRL &= ~(GPIO_AFR_MASK << PB4_AFRL_SHIFT);  // Clear PB4 AF bits
+    GPIOB_AFRL |=  (GPIO_AF2_TIM3 << PB4_AFRL_SHIFT);  // Set AF2
+
+    /* 4. Enable TIM3 clock */
+    RCC_APB1ENR |= TIM3EN;
+
+    /* 5. Set TIM3 prescaler */
+    TIM3_PSC = 160 - 1;
+
+    /* 6. Set PWM period */
+    TIM3_ARR = 100 - 1;
+
+    /* 7. Set duty cycle */
+    TIM3_CCR1 = 0;  // Security light off
+
+    /* 8. Configure Channel 1 as PWM mode 1 */
+    TIM3_CCMR1 &= ~TIM_CCMR1_CC1S_MASK;  // CC1S = 00, output mode
+    TIM3_CCMR1 &= ~TIM_CCMR1_OC1M_MASK;  // Clear OC1M bits
+    TIM3_CCMR1 |=  TIM_CCMR1_OC1M_PWM1;  // Set OC1M = 110, PWM mode 1
+
+    /* 9. Enable preload for Channel 1 */
+    TIM3_CCMR1 |= TIM_CCMR1_OC1PE;
+
+    /* 10. Enable TIM3 Channel 1 output */
+    TIM3_CCER |= TIM_CCER_CC1E;
+
+    /* 11. Enable auto-reload preload */
+    TIM3_CR1 |= TIM_CR1_ARPE;
+
+    /* 12. Generate update event */
+    TIM3_EGR |= TIM_EGR_UG;
+
+    /* 13. Reset counter */
+    TIM3_CNT = 0;
+
+    /* 14. Start TIM3 */
+    TIM3_CR1 |= TIM_CR1_CEN;
 }
 
 void warning_led_init(void){
@@ -314,17 +404,17 @@ void warning_led_init(void){
 
 int main(void)
 {
-	uint32_t light_value;
 
 	security_light_pwm_init();
     warning_led_init();
     adc1_pa0_init();
+    adc1_dma_init();
+    adc1_start_conversion();
 
     while (1)
     {
-    	light_value = adc1_read();
 
-    	if(light_value < NIGHT_THRESHOLD){
+    	if(adc_dma_value < NIGHT_THRESHOLD){
     		TIM3_CCR1 = 75;  // Security light on - 75% brightness
     	}
     	else{
