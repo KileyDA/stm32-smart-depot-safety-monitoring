@@ -78,14 +78,18 @@
    GPIO Register Offsets
    ========================= */
 #define GPIO_MODER_OFFSET         		(0x00UL)
+#define GPIO_PUPDR_OFFSET				(0x0CUL)
 #define GPIO_ODR_OFFSET           		(0x14UL)
+#define GPIO_IDR_OFFSET					(0x10UL)
 #define GPIO_AFRL_OFFSET          		(0x20UL)
 
 /* =========================
    GPIO Register Definitions
    ========================= */
 #define GPIOA_MODER               		REG32(GPIOA_BASE + GPIO_MODER_OFFSET)
+#define GPIOA_PUPDR						REG32(GPIOA_BASE + GPIO_PUPDR_OFFSET)
 #define GPIOA_ODR                 		REG32(GPIOA_BASE + GPIO_ODR_OFFSET)
+#define GPIOA_IDR  						REG32(GPIOA_BASE + GPIO_IDR_OFFSET)
 
 #define GPIOB_MODER               		REG32(GPIOB_BASE + GPIO_MODER_OFFSET)
 #define GPIOB_AFRL                		REG32(GPIOB_BASE + GPIO_AFRL_OFFSET)
@@ -247,11 +251,53 @@
 #define DMA_LIFCR_CLEAR_STREAM0			 ((1U<<0)|(1U<<2)|(1U<<3)|(1U<<4)|(1U<<5))
 
 /* =========================
-   Output Pins
+   Generic GPIO helpers
    ========================= */
-#define WARNING_LED			  			 (1U << 8) // PA8
-#define SECURITY_LIGHT		  			 (1U << 4) // PB4
-#define LIGHT_DETECTOR		  			 (1U << 0) // PA0
+#define GPIO_2BIT_FIELD_WIDTH      (2U)
+#define GPIO_2BIT_MASK             (0x3U)
+
+#define GPIO_PIN_SHIFT(pin)        ((pin) * GPIO_2BIT_FIELD_WIDTH)
+#define GPIO_PIN_2BIT_MASK(pin)    (GPIO_2BIT_MASK << GPIO_PIN_SHIFT(pin))
+#define GPIO_PIN_MASK(pin)         (1U << (pin))
+
+#define GPIO_MODE_INPUT            (0x0U)
+#define GPIO_MODE_OUTPUT           (0x1U)
+#define GPIO_MODE_ALTERNATE        (0x2U)
+#define GPIO_MODE_ANALOG           (0x3U)
+
+#define GPIO_PUPD_NONE             (0x0U)
+#define GPIO_PUPD_PULLUP           (0x1U)
+#define GPIO_PUPD_PULLDOWN         (0x2U)
+
+#define GPIO_SET_MODE(GPIOx_MODER, pin, mode)                  \
+    do {                                                        \
+        (GPIOx_MODER) &= ~GPIO_PIN_2BIT_MASK(pin);              \
+        (GPIOx_MODER) |=  (((mode) & GPIO_2BIT_MASK)            \
+                           << GPIO_PIN_SHIFT(pin));             \
+    } while (0)
+
+#define GPIO_SET_PUPD(GPIOx_PUPDR, pin, pupd)                  \
+    do {                                                        \
+        (GPIOx_PUPDR) &= ~GPIO_PIN_2BIT_MASK(pin);              \
+        (GPIOx_PUPDR) |=  (((pupd) & GPIO_2BIT_MASK)            \
+                           << GPIO_PIN_SHIFT(pin));             \
+    } while (0)
+
+/* =========================
+   Pin Numbers
+   ========================= */
+#define LIGHT_DETECTOR_PIN         (0U)  // PA0
+#define PIR_SENSOR_PIN             (1U)  // PA1
+#define SECURITY_LIGHT_PIN         (4U)  // PB4
+#define WARNING_LED_PIN            (8U)  // PA8
+
+/* =========================
+   Pin Masks
+   ========================= */
+#define LIGHT_DETECTOR             GPIO_PIN_MASK(LIGHT_DETECTOR_PIN)
+#define PIR_SENSOR                 GPIO_PIN_MASK(PIR_SENSOR_PIN)
+#define SECURITY_LIGHT             GPIO_PIN_MASK(SECURITY_LIGHT_PIN)
+#define WARNING_LED                GPIO_PIN_MASK(WARNING_LED_PIN)
 
 #define NIGHT_THRESHOLD 1200
 
@@ -261,9 +307,8 @@ void adc1_pa0_init(void){
 	/*Enable clock for PA0*/
 	RCC_AHB1ENR |= GPIOAEN;
 
-	/*Configure PA0 as analog*/
-	GPIOA_MODER |= PA0_MODE_BIT0;
-	GPIOA_MODER |= PA0_MODE_BIT1;
+	/*Configure PA0 as analogue*/
+	GPIO_SET_MODE(GPIOA_MODER, LIGHT_DETECTOR_PIN, GPIO_MODE_ANALOG);
 
 	/*Enable ADC peripheral clock*/
 	RCC_APB2ENR |= ADC1EN;
@@ -348,8 +393,7 @@ void security_light_pwm_init(void)
     RCC_AHB1ENR |= GPIOBEN;
 
     /* 2. Configure PB4 as alternate function mode */
-    GPIOB_MODER &= ~PB4_MODE_BIT0;
-    GPIOB_MODER |=  PB4_MODE_BIT1;
+    GPIO_SET_MODE(GPIOB_MODER, SECURITY_LIGHT_PIN, GPIO_MODE_ALTERNATE);
 
     /* 3. Select AF2 for PB4: PB4 -> TIM3_CH1 */
     GPIOB_AFRL &= ~(GPIO_AFR_MASK << PB4_AFRL_SHIFT);  // Clear PB4 AF bits
@@ -396,10 +440,24 @@ void warning_led_init(void){
     RCC_AHB1ENR |= GPIOAEN;
 
     /* Configure PA8 as output mode */
-    GPIOA_MODER |=  (1U << 16);
-    GPIOA_MODER &= ~(1U << 17);
+    GPIO_SET_MODE(GPIOA_MODER, WARNING_LED_PIN, GPIO_MODE_OUTPUT);
+}
 
-    //GPIOA_ODR |= WARNING_LED;
+void pir_sensor_init(void)
+{
+    /* 1. Enable GPIOA clock */
+    RCC_AHB1ENR |= GPIOAEN;
+
+    /* 2. Configure PA1 as input mode */
+    GPIO_SET_MODE(GPIOA_MODER, PIR_SENSOR_PIN, GPIO_MODE_INPUT);
+
+    /* 3. No pull-up or pull-down for first test */
+    GPIO_SET_PUPD(GPIOA_PUPDR, PIR_SENSOR_PIN, GPIO_PUPD_NONE);
+}
+
+uint8_t pir_motion_detected(void)
+{
+    return (GPIOA_IDR & PIR_SENSOR) != 0;
 }
 
 int main(void)
@@ -410,15 +468,30 @@ int main(void)
     adc1_pa0_init();
     adc1_dma_init();
     adc1_start_conversion();
+    pir_sensor_init();
 
     while (1)
     {
 
     	if(adc_dma_value < NIGHT_THRESHOLD){
-    		TIM3_CCR1 = 75;  // Security light on - 75% brightness
+    		/* Dark environment: keep security light dimmed - 50% brightness */
+    		TIM3_CCR1 = 50;
+
+    		if(pir_motion_detected()){
+    			 /* Dark + motion detected: increase brightness and turn on warning LED */
+    			TIM3_CCR1 = 100;
+    			GPIOA_ODR |= WARNING_LED;
+    		}
+    		else{
+    			 /* Dark + no motion: keep light dimmed and warning LED off */
+    			TIM3_CCR1 = 50;
+    			GPIOA_ODR &= ~WARNING_LED;
+    		}
     	}
     	else{
-    		TIM3_CCR1 = 0;  // Security light off
+    		 /* Bright environment: security light and warning LED off */
+    		TIM3_CCR1 = 0;
+    		GPIOA_ODR &= ~WARNING_LED;
     	}
     }
 }
