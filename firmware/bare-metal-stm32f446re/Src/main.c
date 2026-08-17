@@ -290,6 +290,7 @@
 #define PIR_SENSOR_PIN             (1U)  // PA1
 #define SECURITY_LIGHT_PIN         (4U)  // PB4
 #define WARNING_LED_PIN            (8U)  // PA8
+#define ACK_BUTTON_PIN             (10U)  // PA10 / Arduino D2
 
 /* =========================
    Pin Masks
@@ -298,6 +299,7 @@
 #define PIR_SENSOR                 GPIO_PIN_MASK(PIR_SENSOR_PIN)
 #define SECURITY_LIGHT             GPIO_PIN_MASK(SECURITY_LIGHT_PIN)
 #define WARNING_LED                GPIO_PIN_MASK(WARNING_LED_PIN)
+#define ACK_BUTTON                 GPIO_PIN_MASK(ACK_BUTTON_PIN)
 
 #define NIGHT_THRESHOLD 1200
 
@@ -460,38 +462,84 @@ uint8_t pir_motion_detected(void)
     return (GPIOA_IDR & PIR_SENSOR) != 0;
 }
 
+void ack_button_init(void)
+{
+    /* 1. Enable GPIOA clock */
+    RCC_AHB1ENR |= GPIOAEN;
+
+    /* 2. Configure PA10 as input mode */
+    GPIO_SET_MODE(GPIOA_MODER, ACK_BUTTON_PIN, GPIO_MODE_INPUT);
+
+    /* 3. Enable internal pull-up resistor */
+    GPIO_SET_PUPD(GPIOA_PUPDR, ACK_BUTTON_PIN, GPIO_PUPD_PULLUP);
+}
+
+uint8_t ack_button_pressed(void)
+{
+    return (GPIOA_IDR & ACK_BUTTON) == 0;
+}
+
 int main(void)
 {
+    uint8_t alert_active = 0;
+    uint8_t alert_acknowledged = 0;
 
-	security_light_pwm_init();
+    security_light_pwm_init();
     warning_led_init();
     adc1_pa0_init();
     adc1_dma_init();
     adc1_start_conversion();
     pir_sensor_init();
+    ack_button_init();
 
     while (1)
     {
+        uint8_t is_dark = adc_dma_value < NIGHT_THRESHOLD;
+        uint8_t motion_detected = pir_motion_detected();
+        uint8_t button_pressed = ack_button_pressed();
 
-    	if(adc_dma_value < NIGHT_THRESHOLD){
-    		/* Dark environment: keep security light dimmed - 50% brightness */
-    		TIM3_CCR1 = 50;
+        if (is_dark)
+        {
+            /* Motion detected: latch alert unless it has already been acknowledged */
+            if (motion_detected && !alert_acknowledged)
+            {
+                alert_active = 1;
+            }
 
-    		if(pir_motion_detected()){
-    			 /* Dark + motion detected: increase brightness and turn on warning LED */
-    			TIM3_CCR1 = 100;
-    			GPIOA_ODR |= WARNING_LED;
-    		}
-    		else{
-    			 /* Dark + no motion: keep light dimmed and warning LED off */
-    			TIM3_CCR1 = 50;
-    			GPIOA_ODR &= ~WARNING_LED;
-    		}
-    	}
-    	else{
-    		 /* Bright environment: security light and warning LED off */
-    		TIM3_CCR1 = 0;
-    		GPIOA_ODR &= ~WARNING_LED;
-    	}
+            /* Button press silences the current active alert */
+            if (button_pressed && alert_active)
+            {
+                alert_active = 0;
+                alert_acknowledged = 1;
+            }
+
+            /* Once motion clears, allow the next motion event to trigger a new alert */
+            if (!motion_detected)
+            {
+                alert_acknowledged = 0;
+            }
+
+            if (alert_active)
+            {
+                /* Dark + motion alert active */
+                TIM3_CCR1 = 100;
+                GPIOA_ODR |= WARNING_LED;
+            }
+            else
+            {
+                /* Dark monitoring mode */
+                TIM3_CCR1 = 50;
+                GPIOA_ODR &= ~WARNING_LED;
+            }
+        }
+        else
+        {
+            /* Bright environment: system off/reset */
+            TIM3_CCR1 = 0;
+            GPIOA_ODR &= ~WARNING_LED;
+
+            alert_active = 0;
+            alert_acknowledged = 0;
+        }
     }
 }
