@@ -1,497 +1,481 @@
+/* USER CODE BEGIN Header */
 /**
- ******************************************************************************
- * @file           : main.c
- * @author         : Kelly Dianga
- * @brief          : Main program body
- ******************************************************************************
- * @attention
- *
- * Copyright (c) 2026 STMicroelectronics.
- * All rights reserved.
- *
- * This software is licensed under terms that can be found in the LICENSE file
- * in the root directory of this software component.
- * If no LICENSE file comes with this software, it is provided AS-IS.
- *
- ******************************************************************************
- */
-
-#include <stdint.h>
-
-#if !defined(__SOFT_FP__) && defined(__ARM_FP)
-  #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
-#endif
-/* ========================
-   Base addresses
-   ======================== */
-#define PERIPH_BASE   			  		(0x40000000UL)
-
-#define AHB1_OFFSET	  			  		(0x00020000UL)
-#define AHB1_BASE	    		  		(PERIPH_BASE + AHB1_OFFSET)
-
-#define APB1_OFFSET				  		(0x00000000UL)
-#define APB1_BASE				  		(PERIPH_BASE + APB1_OFFSET)
-
-#define APB2_OFFSET				  		(0x00010000UL)
-#define APB2_BASE				  		(PERIPH_BASE + APB2_OFFSET)
-
-/* =========================
-   Peripheral base addresses
-   ========================= */
-#define GPIOA_OFFSET    		  		(0x00000000UL)
-#define GPIOA_BASE	  	    	  		(AHB1_BASE + GPIOA_OFFSET)
-
-#define GPIOB_OFFSET			  		(0x00000400UL)
-#define GPIOB_BASE				  		(AHB1_BASE + GPIOB_OFFSET)
-
-#define RCC_OFFSET	    		  		(0x00003800UL)
-#define RCC_BASE  	    		  		(AHB1_BASE + RCC_OFFSET)
-
-#define TIM3_OFFSET				  		(0x00000400UL)
-#define TIM3_BASE				  		(APB1_BASE + TIM3_OFFSET)
-
-#define ADC1_OFFSET				  		(0x00002000UL)
-#define ADC1_BASE				  		(APB2_BASE + ADC1_OFFSET)
-
-#define DMA2_OFFSET						(0x00006400UL)
-#define DMA2_BASE						(AHB1_BASE + DMA2_OFFSET)
-/* =========================
-   Register Access Helper
-   ========================= */
-#define REG32(addr)         	  		(*(volatile uint32_t *)(addr))
-
-/* =========================
-   RCC Register Offsets
-   ========================= */
-#define RCC_AHB1ENR_OFFSET        		(0x30UL)
-#define RCC_APB1ENR_OFFSET        		(0x40UL)
-#define RCC_APB2ENR_OFFSET        		(0x44UL)
-
-/* =========================
-   RCC Register Definitions
-   ========================= */
-#define RCC_AHB1ENR               		REG32(RCC_BASE + RCC_AHB1ENR_OFFSET)
-#define RCC_APB1ENR               		REG32(RCC_BASE + RCC_APB1ENR_OFFSET)
-#define RCC_APB2ENR               		REG32(RCC_BASE + RCC_APB2ENR_OFFSET)
-
-/* =========================
-   GPIO Register Offsets
-   ========================= */
-#define GPIO_MODER_OFFSET         		(0x00UL)
-#define GPIO_PUPDR_OFFSET				(0x0CUL)
-#define GPIO_ODR_OFFSET           		(0x14UL)
-#define GPIO_IDR_OFFSET					(0x10UL)
-#define GPIO_AFRL_OFFSET          		(0x20UL)
-
-/* =========================
-   GPIO Register Definitions
-   ========================= */
-#define GPIOA_MODER               		REG32(GPIOA_BASE + GPIO_MODER_OFFSET)
-#define GPIOA_PUPDR						REG32(GPIOA_BASE + GPIO_PUPDR_OFFSET)
-#define GPIOA_ODR                 		REG32(GPIOA_BASE + GPIO_ODR_OFFSET)
-#define GPIOA_IDR  						REG32(GPIOA_BASE + GPIO_IDR_OFFSET)
-
-#define GPIOB_MODER               		REG32(GPIOB_BASE + GPIO_MODER_OFFSET)
-#define GPIOB_AFRL                		REG32(GPIOB_BASE + GPIO_AFRL_OFFSET)
-
-
-/* =========================
-   TIM3 Register Offsets
-   ========================= */
-#define TIM3_CR1_OFFSET          		(0x00UL)
-#define TIM3_EGR_OFFSET		     		(0x14UL)
-#define TIM3_CCMR1_OFFSET	     		(0x18UL)
-#define TIM3_CCER_OFFSET	     		(0x20UL)
-#define TIM3_CNT_OFFSET          		(0x24UL)
-#define TIM3_PSC_OFFSET		     		(0x28UL)
-#define TIM3_ARR_OFFSET		     		(0x2CUL)
-#define TIM3_CCR1_OFFSET	     		(0x34UL)
-
-
-/* =========================
-   TIM3 Register Definitions
-   ========================= */
-#define TIM3_CR1                 		REG32(TIM3_BASE + TIM3_CR1_OFFSET)
-#define TIM3_EGR                 		REG32(TIM3_BASE + TIM3_EGR_OFFSET)
-#define TIM3_CCMR1               		REG32(TIM3_BASE + TIM3_CCMR1_OFFSET)
-#define TIM3_CCER                		REG32(TIM3_BASE + TIM3_CCER_OFFSET)
-#define TIM3_CNT                 		REG32(TIM3_BASE + TIM3_CNT_OFFSET)
-#define TIM3_PSC                 		REG32(TIM3_BASE + TIM3_PSC_OFFSET)
-#define TIM3_ARR                 		REG32(TIM3_BASE + TIM3_ARR_OFFSET)
-#define TIM3_CCR1                		REG32(TIM3_BASE + TIM3_CCR1_OFFSET)
-
-/* =========================
-   ADC1 Register Offsets
-   ========================= */
-#define ADC1_SR_OFFSET          		(0x00UL)
-#define ADC1_CR1_OFFSET		    		(0x04UL)
-#define ADC1_CR2_OFFSET         		(0x08UL)
-#define ADC1_SMPR2_OFFSET       		(0x10UL)
-#define ADC1_SQR1_OFFSET	    		(0x2CUL)
-#define ADC1_SQR3_OFFSET	    		(0x34UL)
-#define ADC1_DR_OFFSET          		(0x4CUL)
-
-/* =========================
-   ADC1 Register Definitions
-   ========================= */
-#define ADC1_SR       		    		 REG32(ADC1_BASE + ADC1_SR_OFFSET)
-#define ADC1_CR1		  	    		 REG32(ADC1_BASE + ADC1_CR1_OFFSET)
-#define ADC1_CR2       		    		 REG32(ADC1_BASE + ADC1_CR2_OFFSET)
-#define ADC1_SMPR2     		    		 REG32(ADC1_BASE + ADC1_SMPR2_OFFSET)
-#define ADC1_SQR1	  		    		 REG32(ADC1_BASE + ADC1_SQR1_OFFSET)
-#define ADC1_SQR3	  		    		 REG32(ADC1_BASE + ADC1_SQR3_OFFSET)
-#define ADC1_DR       		   			 REG32(ADC1_BASE + ADC1_DR_OFFSET)
-
-/* =========================
-   DMA Register Offsets
-   ========================= */
-#define DMA_LIFCR_OFFSET				  (0x008UL)
-#define DMA_S0CR_OFFSET 				  (0x010UL)
-#define DMA_S0NDTR_OFFSET                 (0x014UL)
-#define DMA_S0PAR_OFFSET				  (0x018UL)
-#define DMA_S0M0AR_OFFSET				  (0x01CUL)
-
-/* =========================
-   DMA2 Register Definitions
-   ========================= */
-#define DMA2_LIFCR						  REG32(DMA2_BASE + DMA_LIFCR_OFFSET)
-#define DMA2_S0CR						  REG32(DMA2_BASE + DMA_S0CR_OFFSET)
-#define DMA2_S0NDTR						  REG32(DMA2_BASE + DMA_S0NDTR_OFFSET)
-#define DMA2_S0PAR						  REG32(DMA2_BASE + DMA_S0PAR_OFFSET)
-#define DMA2_S0M0AR						  REG32(DMA2_BASE + DMA_S0M0AR_OFFSET)
-
-/* =========================
-   RCC Peripheral Enable Bits
-   ========================= */
-#define GPIOAEN				   			 (1U << 0)
-#define GPIOBEN				   			 (1U << 1)
-#define TIM3EN				   			 (1U << 1)
-#define ADC1EN				   			 (1U << 8)
-#define DMA2EN						     (1U << 22)
-/* =========================
-   TIM3 Control Bits
-   ========================= */
-#define TIM_CR1_CEN     	   			 (1U << 0)
-#define TIM_CR1_ARPE     	   			 (1U << 7)
-
-/* =========================
-   TIM3 Event Generation Bits
-   ========================= */
-#define TIM_EGR_UG             			 (1U << 0)    // Update generation
-
-
-/* =========================
-   TIM3 Capture/Compare Mode Bits
-   ========================= */
-#define TIM_CCMR1_OC1PE       			 (1U << 3)    // Output compare 1 preload enable
-#define TIM_CCMR1_OC1M_PWM1   			 (0x6U << 4)  // PWM mode 1
-#define TIM_CCMR1_OC1M_MASK   			 (0x7U << 4)  // OC1M bit mask
-#define TIM_CCMR1_CC1S_MASK   			 (0x3U << 0)  // Channel 1 selection mask
-
-/* =========================
-   TIM3 PWM Output Bits
-   ========================= */
-#define TIM_CCER_CC1E   	  			 (1U << 0)
-
-/* =========================
-   GPIOB PB4 TIM3_CH1 Pin Mapping
-   ========================= */
-#define PB4_MODE_BIT0         			 (1U << 8)
-#define PB4_MODE_BIT1         			 (1U << 9)
-
-#define PB4_AFRL_SHIFT        			 (16U)
-#define GPIO_AF2_TIM3         		 	 (0x2U)
-#define GPIO_AFR_MASK         			 (0xFU)
-
-/* =========================
-   GPIOA PA0 Analog Pin Mapping
-   ========================= */
-#define PA0_MODE_BIT0         			 (1U << 0)
-#define PA0_MODE_BIT1         			 (1U << 1)
-
-#define ADC_SMPR2_SMP0_SHIFT  			 (0U)
-#define ADC_SMPR2_SAMPLE_MASK 			 (0x7U)
-#define ADC_SAMPLE_84_CYCLES  			 (0x4U)
-
-#define ADC_SQR3_SQ1_SHIFT    			 (0U)
-#define ADC_SQR3_SQ1_MASK     			 (0x1FU)
-#define ADC_CHANNEL_0 		  			 (0U)
-
-#define ADC_SQR1_LENGTH_SHIFT  			 (20U)
-#define ADC_SQR1_LENGTH_MASK  			 (0xFU)
-#define ADC_SEQUENCE_LENGTH_1_CONVERSION (0U)
-
-/* =========================
-   ADC Control and Status Bits
-   ========================= */
-#define ADC_CR2_ADON                     (1U << 0)
-#define ADC_CR2_SWSTART         		 (1U << 30)
-#define ADC_CR2_DMA 					 (1U << 8)
-#define ADC_CR2_DDS 					 (1U << 9)
-#define ADC_CR2_CONT 					 (1U << 1)
-#define ADC_SR_EOC              		 (1U << 1)
-
-
-/* =========================
-   DMA Stream Control Bits
-   ========================= */
-#define DMA_SCR_EN						 (1U << 0)
-#define DMA_SCR_CHSEL_MASK               (0x7U << 25)
-#define DMA_SCR_DIR_MASK				 (0x3U << 6)
-#define DMA_SCR_PSIZE_MASK   			 (0x3U << 11)
-#define DMA_SCR_MSIZE_MASK   			 (0x3U << 13)
-#define DMA_SCR_CIRC         			 (1U << 8)
-
-#define DMA_SCR_PSIZE_HALFWORD      	 (1U << 11)
-#define DMA_SCR_MSIZE_HALFWORD      	 (1U << 13)
-
-/* =========================
-   DMA Stream 0 Flag Clear Bits
-   ========================= */
-#define DMA_LIFCR_CLEAR_STREAM0			 ((1U<<0)|(1U<<2)|(1U<<3)|(1U<<4)|(1U<<5))
-
-/* =========================
-   Generic GPIO helpers
-   ========================= */
-#define GPIO_2BIT_FIELD_WIDTH      (2U)
-#define GPIO_2BIT_MASK             (0x3U)
-
-#define GPIO_PIN_SHIFT(pin)        ((pin) * GPIO_2BIT_FIELD_WIDTH)
-#define GPIO_PIN_2BIT_MASK(pin)    (GPIO_2BIT_MASK << GPIO_PIN_SHIFT(pin))
-#define GPIO_PIN_MASK(pin)         (1U << (pin))
-
-#define GPIO_MODE_INPUT            (0x0U)
-#define GPIO_MODE_OUTPUT           (0x1U)
-#define GPIO_MODE_ALTERNATE        (0x2U)
-#define GPIO_MODE_ANALOG           (0x3U)
-
-#define GPIO_PUPD_NONE             (0x0U)
-#define GPIO_PUPD_PULLUP           (0x1U)
-#define GPIO_PUPD_PULLDOWN         (0x2U)
-
-#define GPIO_SET_MODE(GPIOx_MODER, pin, mode)                  \
-    do {                                                        \
-        (GPIOx_MODER) &= ~GPIO_PIN_2BIT_MASK(pin);              \
-        (GPIOx_MODER) |=  (((mode) & GPIO_2BIT_MASK)            \
-                           << GPIO_PIN_SHIFT(pin));             \
-    } while (0)
-
-#define GPIO_SET_PUPD(GPIOx_PUPDR, pin, pupd)                  \
-    do {                                                        \
-        (GPIOx_PUPDR) &= ~GPIO_PIN_2BIT_MASK(pin);              \
-        (GPIOx_PUPDR) |=  (((pupd) & GPIO_2BIT_MASK)            \
-                           << GPIO_PIN_SHIFT(pin));             \
-    } while (0)
-
-/* =========================
-   Pin Numbers
-   ========================= */
-#define LIGHT_DETECTOR_PIN         (0U)  // PA0
-#define PIR_SENSOR_PIN             (1U)  // PA1
-#define SECURITY_LIGHT_PIN         (4U)  // PB4
-#define WARNING_LED_PIN            (8U)  // PA8
-
-/* =========================
-   Pin Masks
-   ========================= */
-#define LIGHT_DETECTOR             GPIO_PIN_MASK(LIGHT_DETECTOR_PIN)
-#define PIR_SENSOR                 GPIO_PIN_MASK(PIR_SENSOR_PIN)
-#define SECURITY_LIGHT             GPIO_PIN_MASK(SECURITY_LIGHT_PIN)
-#define WARNING_LED                GPIO_PIN_MASK(WARNING_LED_PIN)
-
-#define NIGHT_THRESHOLD 1200
-
-volatile uint16_t adc_dma_value = 0;
-
-void adc1_pa0_init(void){
-	/*Enable clock for PA0*/
-	RCC_AHB1ENR |= GPIOAEN;
-
-	/*Configure PA0 as analogue*/
-	GPIO_SET_MODE(GPIOA_MODER, LIGHT_DETECTOR_PIN, GPIO_MODE_ANALOG);
-
-	/*Enable ADC peripheral clock*/
-	RCC_APB2ENR |= ADC1EN;
-
-	/*Set Sequence Length to 1 */
-	ADC1_SQR1 &= ~(ADC_SQR1_LENGTH_MASK << ADC_SQR1_LENGTH_SHIFT);
-	ADC1_SQR1 |= (ADC_SEQUENCE_LENGTH_1_CONVERSION << ADC_SQR1_LENGTH_SHIFT);
-
-	/* Select ADC channel 0 as the first regular conversion */
-	ADC1_SQR3 &= ~(ADC_SQR3_SQ1_MASK << ADC_SQR3_SQ1_SHIFT);
-	ADC1_SQR3 |= (ADC_CHANNEL_0 << ADC_SQR3_SQ1_SHIFT);
-
-	/*Set Sample time */
-	ADC1_SMPR2 &= ~(ADC_SMPR2_SAMPLE_MASK << ADC_SMPR2_SMP0_SHIFT);
-	ADC1_SMPR2 |= (ADC_SAMPLE_84_CYCLES << ADC_SMPR2_SMP0_SHIFT);
-
-	/*Enable ADC1 */
-	ADC1_CR2 |= ADC_CR2_ADON;
-
-}
-
-void adc1_start_conversion(void){
-	/*1. Start ADC Conversion */
-	ADC1_CR2 |=  ADC_CR2_SWSTART;
-}
-
-void adc1_dma_init(void){
-	/* 1. Enable DMA2 clock*/
-	RCC_AHB1ENR |= DMA2EN;
-
-	/* 2. Disable DMA2 Stream 0 before configuring it.*/
-	DMA2_S0CR &= ~DMA_SCR_EN;
-
-	/* 3. Wait until DMA stream is fully disabled */
-	while (DMA2_S0CR & DMA_SCR_EN) {}
-
-	/* 4. Clear any pending flags for DMA2 Stream0 */
-	DMA2_LIFCR |= DMA_LIFCR_CLEAR_STREAM0;
-
-	/* 5. Set peripheral address: adc1 data register */
-	DMA2_S0PAR = (uint32_t)&ADC1_DR;
-
-	/* 6. Set memory address: variable where ADC result will be stored */
-	DMA2_S0M0AR	= (uint32_t)&adc_dma_value;
-
-	/* 7. Set the number of data items to transfer */
-	DMA2_S0NDTR = 1;
-
-	/* 8. Select DMA channel 0 for ADC1 */
-	DMA2_S0CR &= ~DMA_SCR_CHSEL_MASK;
-
-	/* 9. Set direction: peripheral-to-memory */
-	DMA2_S0CR &= ~DMA_SCR_DIR_MASK;
-
-	/* 10. Set peripheral data size to half-word, because ADC result is 12-bit */
-	DMA2_S0CR &= ~DMA_SCR_PSIZE_MASK;
-	DMA2_S0CR |= DMA_SCR_PSIZE_HALFWORD;
-
-	/* 11. Set memory data size to half-word */
-	DMA2_S0CR &= ~DMA_SCR_MSIZE_MASK;
-	DMA2_S0CR |= DMA_SCR_MSIZE_HALFWORD;
-
-	/* 12. Enable circular mode so that the value keeps updating*/
-	DMA2_S0CR |= DMA_SCR_CIRC;
-
-	/* 13. Enable DMA mode in ADC1*/
-	ADC1_CR2 |= ADC_CR2_DMA;
-
-	/* 14. Keep DMA requests active after each conversion*/
-	ADC1_CR2 |= ADC_CR2_DDS;
-
-	/* 15. Enable continous conversion mode*/
-	ADC1_CR2 |= ADC_CR2_CONT;
-
-	/* 16. Enable DMA2 Stream 0*/
-	DMA2_S0CR |= DMA_SCR_EN;
-}
-
-void security_light_pwm_init(void)
-{
-    /* 1. Enable GPIOB clock */
-    RCC_AHB1ENR |= GPIOBEN;
-
-    /* 2. Configure PB4 as alternate function mode */
-    GPIO_SET_MODE(GPIOB_MODER, SECURITY_LIGHT_PIN, GPIO_MODE_ALTERNATE);
-
-    /* 3. Select AF2 for PB4: PB4 -> TIM3_CH1 */
-    GPIOB_AFRL &= ~(GPIO_AFR_MASK << PB4_AFRL_SHIFT);  // Clear PB4 AF bits
-    GPIOB_AFRL |=  (GPIO_AF2_TIM3 << PB4_AFRL_SHIFT);  // Set AF2
-
-    /* 4. Enable TIM3 clock */
-    RCC_APB1ENR |= TIM3EN;
-
-    /* 5. Set TIM3 prescaler */
-    TIM3_PSC = 160 - 1;
-
-    /* 6. Set PWM period */
-    TIM3_ARR = 100 - 1;
-
-    /* 7. Set duty cycle */
-    TIM3_CCR1 = 0;  // Security light off
-
-    /* 8. Configure Channel 1 as PWM mode 1 */
-    TIM3_CCMR1 &= ~TIM_CCMR1_CC1S_MASK;  // CC1S = 00, output mode
-    TIM3_CCMR1 &= ~TIM_CCMR1_OC1M_MASK;  // Clear OC1M bits
-    TIM3_CCMR1 |=  TIM_CCMR1_OC1M_PWM1;  // Set OC1M = 110, PWM mode 1
-
-    /* 9. Enable preload for Channel 1 */
-    TIM3_CCMR1 |= TIM_CCMR1_OC1PE;
-
-    /* 10. Enable TIM3 Channel 1 output */
-    TIM3_CCER |= TIM_CCER_CC1E;
-
-    /* 11. Enable auto-reload preload */
-    TIM3_CR1 |= TIM_CR1_ARPE;
-
-    /* 12. Generate update event */
-    TIM3_EGR |= TIM_EGR_UG;
-
-    /* 13. Reset counter */
-    TIM3_CNT = 0;
-
-    /* 14. Start TIM3 */
-    TIM3_CR1 |= TIM_CR1_CEN;
-}
-
-void warning_led_init(void){
-    /* Enable GPIOA clock for warning LED */
-    RCC_AHB1ENR |= GPIOAEN;
-
-    /* Configure PA8 as output mode */
-    GPIO_SET_MODE(GPIOA_MODER, WARNING_LED_PIN, GPIO_MODE_OUTPUT);
-}
-
-void pir_sensor_init(void)
-{
-    /* 1. Enable GPIOA clock */
-    RCC_AHB1ENR |= GPIOAEN;
-
-    /* 2. Configure PA1 as input mode */
-    GPIO_SET_MODE(GPIOA_MODER, PIR_SENSOR_PIN, GPIO_MODE_INPUT);
-
-    /* 3. No pull-up or pull-down for first test */
-    GPIO_SET_PUPD(GPIOA_PUPDR, PIR_SENSOR_PIN, GPIO_PUPD_NONE);
-}
-
-uint8_t pir_motion_detected(void)
-{
-    return (GPIOA_IDR & PIR_SENSOR) != 0;
-}
-
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <string.h>
+
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
+TIM_HandleTypeDef htim3;
+
+UART_HandleTypeDef huart2;
+
+/* USER CODE BEGIN PV */
+uint32_t ldr_adc_value =0;
+uint32_t ldr_voltage_mv = 0;
+GPIO_PinState pir_state;
+GPIO_PinState ack_button_state;
+char uart_message[100];
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_TIM3_Init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
 
-	security_light_pwm_init();
-    warning_led_init();
-    adc1_pa0_init();
-    adc1_dma_init();
-    adc1_start_conversion();
-    pir_sensor_init();
+  /* USER CODE BEGIN 1 */
 
-    while (1)
-    {
+  /* USER CODE END 1 */
 
-    	if(adc_dma_value < NIGHT_THRESHOLD){
-    		/* Dark environment: keep security light dimmed - 50% brightness */
-    		TIM3_CCR1 = 50;
+  /* MCU Configuration--------------------------------------------------------*/
 
-    		if(pir_motion_detected()){
-    			 /* Dark + motion detected: increase brightness and turn on warning LED */
-    			TIM3_CCR1 = 100;
-    			GPIOA_ODR |= WARNING_LED;
-    		}
-    		else{
-    			 /* Dark + no motion: keep light dimmed and warning LED off */
-    			TIM3_CCR1 = 50;
-    			GPIOA_ODR &= ~WARNING_LED;
-    		}
-    	}
-    	else{
-    		 /* Bright environment: security light and warning LED off */
-    		TIM3_CCR1 = 0;
-    		GPIOA_ODR &= ~WARNING_LED;
-    	}
-    }
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_USART2_UART_Init();
+  MX_TIM3_Init();
+  /* USER CODE BEGIN 2 */
+  char start_msg[] = "STM32 LDR, PIR, LED, buzzer and acknowledge button test started\r\n";
+  HAL_UART_Transmit(&huart2, (uint8_t*)start_msg, strlen(start_msg), HAL_MAX_DELAY);
+
+  /* Start PWM for Security Light LED on TIM3 Channel 1 */
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+	  HAL_ADC_Start(&hadc1);
+	  if (HAL_ADC_PollForConversion(&hadc1,HAL_MAX_DELAY)==HAL_OK){
+		  ldr_adc_value = HAL_ADC_GetValue(&hadc1);
+		  ldr_voltage_mv = (ldr_adc_value *3300)/ 4095;
+
+		  snprintf(uart_message, sizeof(uart_message),
+				  "LDR ADC Value: %lu | Voltage: %lu mV\r\n",
+				  ldr_adc_value,
+				  ldr_voltage_mv);
+
+		  HAL_UART_Transmit(&huart2,
+				  (uint8_t*)uart_message,
+				  strlen(uart_message),
+				  HAL_MAX_DELAY);
+
+	  }
+	  HAL_ADC_Stop(&hadc1);
+
+	  // Read PIR motion Sensor
+	  pir_state = HAL_GPIO_ReadPin(PIR_MOTION_INPUT_GPIO_Port, PIR_MOTION_INPUT_Pin);
+
+	    if (pir_state == GPIO_PIN_SET)
+	    {
+	  	  snprintf(uart_message, sizeof(uart_message), "PIR Motion: DETECTED\r\n");
+	    }
+	    else
+	    {
+	  	  snprintf(uart_message, sizeof(uart_message), "PIR Motion: NOT DETECTED\r\n");
+	    }
+
+	    HAL_UART_Transmit(&huart2,
+						  (uint8_t*)uart_message,
+						  strlen(uart_message),
+						  HAL_MAX_DELAY);
+
+	    /* Read Reset/Acknowledge Button */
+	    ack_button_state = HAL_GPIO_ReadPin(ACK_BUTTON_GPIO_Port, ACK_BUTTON_Pin);
+
+	    if (ack_button_state == GPIO_PIN_RESET)
+	    {
+	        snprintf(uart_message, sizeof(uart_message), "Acknowledge Button: PRESSED\r\n");
+	    }
+	    else
+	    {
+	        snprintf(uart_message, sizeof(uart_message), "Acknowledge Button: NOT PRESSED\r\n");
+	    }
+
+	    HAL_UART_Transmit(&huart2,
+	                      (uint8_t*)uart_message,
+	                      strlen(uart_message),
+	                      HAL_MAX_DELAY);
+
+	    /* Test Security Light LED brightness using PWM */
+	    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 200);  // Low brightness
+
+	    /* Test Warning LED ON/OFF */
+	    HAL_GPIO_WritePin(WARNING_LED_GPIO_Port, WARNING_LED_Pin, GPIO_PIN_SET);
+	    HAL_Delay(500);
+
+	    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 999);  // High brightness
+	    HAL_GPIO_WritePin(WARNING_LED_GPIO_Port, WARNING_LED_Pin, GPIO_PIN_RESET);
+	  HAL_Delay(500);
+
+	  /* Test active buzzer */
+	  HAL_GPIO_WritePin(ACTIVE_BUZZER_GPIO_Port, ACTIVE_BUZZER_Pin, GPIO_PIN_SET);
+
+	  snprintf(uart_message, sizeof(uart_message), "Active Buzzer: ON\r\n");
+	  HAL_UART_Transmit(&huart2, (uint8_t*)uart_message, strlen(uart_message), HAL_MAX_DELAY);
+
+	  HAL_Delay(300);
+
+	  HAL_GPIO_WritePin(ACTIVE_BUZZER_GPIO_Port, ACTIVE_BUZZER_Pin, GPIO_PIN_RESET);
+
+	  snprintf(uart_message, sizeof(uart_message), "Active Buzzer: OFF\r\n");
+	  HAL_UART_Transmit(&huart2, (uint8_t*)uart_message, strlen(uart_message), HAL_MAX_DELAY);
+
+	  HAL_Delay(700);
+
+  }
+
+  /* USER CODE END 3 */
 }
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 83;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 999;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+  /* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|WARNING_LED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(ACTIVE_BUZZER_GPIO_Port, ACTIVE_BUZZER_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : B1_Pin */
+  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PIR_MOTION_INPUT_Pin */
+  GPIO_InitStruct.Pin = PIR_MOTION_INPUT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(PIR_MOTION_INPUT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LD2_Pin WARNING_LED_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin|WARNING_LED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ACK_BUTTON_Pin */
+  GPIO_InitStruct.Pin = ACK_BUTTON_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(ACK_BUTTON_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ACTIVE_BUZZER_Pin */
+  GPIO_InitStruct.Pin = ACTIVE_BUZZER_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ACTIVE_BUZZER_GPIO_Port, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+#ifdef USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
